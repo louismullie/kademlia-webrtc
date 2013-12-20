@@ -1,4 +1,4 @@
-describe("Encoding", function() {
+describe("Kademlia.Encoding", function() {
 
   it ("should test", function () {
     

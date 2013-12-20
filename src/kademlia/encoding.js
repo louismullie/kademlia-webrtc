@@ -1,4 +1,4 @@
-var Kademlia.Encoding = Class.extend({
+Kademlia.Encoding = Class.extend({
   
   encode: function (data) {
     throw 'Cannot call abstract method.';
@@ -10,7 +10,7 @@ var Kademlia.Encoding = Class.extend({
   
 });
 
-var Bencode = Encoding.extend({
+Kademlia.Bencode = Kademlia.Encoding.extend({
   
   encode: function (data) {
     
