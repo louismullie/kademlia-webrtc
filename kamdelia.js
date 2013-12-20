@@ -12,4 +12,4 @@ var Kademlia = {
     udpDatagramMaxSize: 8192
   }
   
-};
+}; 
