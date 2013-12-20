@@ -1,5 +1,11 @@
+/*
+ * Interface for RPC message encoders/decoders
+ *
+ * All encoding implementations used with this
+ * library should inherit and implement this.
+ */
 Kademlia.Encoding = Class.extend({
-  
+
   encode: function (data) {
     throw 'Cannot call abstract method.';
   },
@@ -10,36 +16,63 @@ Kademlia.Encoding = Class.extend({
   
 });
 
+/* 
+ * Implementation of a Bencode-based algorithm
+ * (Bencode is the encoding algorithm used by Bittorrent).
+ *
+ *  @note: This algorithm differs from the "official" Bencode algorithm in
+ *  that it can encode/decode floating point values in addition to integers.
+ */
 Kademlia.Bencode = Kademlia.Encoding.extend({
   
   encode: function (data) {
     
+    var _this = this;
+    
+    if (typeof(data) === 'undefined')
+      throw 'Cannot encode null data.';
+    
     if (data.constructor == Number) {
+      
       return  (data % 1 === 0) ?
         "i" + data + "e" : "f" + data + "e";
+        
     } else if (data.constructor == String) {
+      
       return data.length.toString() + ":" + data;
+      
     } else if (data.constructor == Array) {
+      
       var encodedListItems = '';
-      for (var i = 0; i != data.length; i++)
-        encodedListItems += this.encode(item);
+      
+      _.each(data, function (item) {
+        encodedListItems += _this.encode(item);
+      });
+      
       return "l" + encodedListItems + "e";
+    
     } else if (data.constructor == Object) {
-      var encodedDictItems = '';
-      var keys = _.sort(_.keys(data));
-      for (var i = 0; i != keys.length; i++) {
-        encodedDictItems += this.encode(key);
-        encodedDictItems += this.encode(data[key]);
-      }
+      
+      var encodedDictItems = '',
+          keys = _.keys(data).sort();
+          
+      _.each(keys, function (key) {
+        encodedDictItems += _this.encode(key);
+        encodedDictItems += _this.encode(data[key]);
+      });
+      
       return "d" + encodedDictItems + "e";
+      
     } else {
+      
       throw 'Cannot bencode object.';
+      
     }
     
   },
   
   decode: function (data) {
-    return this._decodeRecursive(data)[0];
+    return this.decodeRecursive(data)[0];
   },
   
   decodeRecursive: function (data, startIndex) {
@@ -47,17 +80,26 @@ Kademlia.Bencode = Kademlia.Encoding.extend({
     var startIndex = startIndex || 0;
     
     if (data[startIndex] == 'i') {
-      var endPos = data.substr(startIndex).find('e')+startIndex;
-      return [data.substr(startIndex+1, endPos), endPos + 1];
+      
+      var endPos = data.substr(startIndex).indexOf('e') + startIndex;
+    
+      return [parseInt(data.substr(startIndex+1, endPos - 1)), endPos + 1];
       
     } else if (data[startIndex] == 'l') {
       
-      var startIndex = startIndex + 1,
-          decodedList = [];
+      var decodedList = [];
+      
+      startIndex++;
       
       while (data[startIndex] != 'e') {
-        var listData = this.decodeRecursive(data, startIndex);
+        
+        var result = this.decodeRecursive(data, startIndex);
+        var listData = result[0], startIndex = result[1];
+        
         decodedList.push(listData);
+        
+        return;
+        
       }
       
       return [decodedList, startIndex + 1];
@@ -74,6 +116,8 @@ Kademlia.Bencode = Kademlia.Encoding.extend({
         var dictData2 = this.decodeRecursive(data, startIndex);
         var value = dictData2[0], startIndex = dictData2[1];
         
+        return;
+        
         decodedDict[key] = value;
         
       }
@@ -82,17 +126,17 @@ Kademlia.Bencode = Kademlia.Encoding.extend({
 
     } else if (data[startIndex] == 'f') {
 
-      var endPos = data.substr(startIndex).find('e') + startIndex;
+      var endPos = data.substr(startIndex).indexOf('e') + startIndex;
       
-      return [data.substr(startIndex+1, endPos), endPos + 1];
+      return [parseFloat(data.substr(startIndex+1, endPos - 1)), endPos + 1];
       
     } else {
       
-      var splitPost = data.substr(startIndex).find(':') + startIndex;
-      var length = data.substr(startIndex, splitPos).length;
-      var startIndex = splitPos + 1;
-      var endPos = startIndex + length;
-      var bytes = data.substr(startIndex, endPos);
+      var splitPos = data.substr(startIndex).indexOf(':') + startIndex,
+          length = data.substr(startIndex, splitPos).length,
+          startIndex = splitPos + 1,
+          endPos = startIndex + length,
+          bytes = data.substr(startIndex, endPos);
       
       return [bytes, endPos];
       
