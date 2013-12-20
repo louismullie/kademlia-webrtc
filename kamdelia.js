@@ -9,7 +9,8 @@ var Kademlia = {
     replicateInterval: 3600,
     dataExpireTimeout: 86400,
     checkRefreshInterval: 720,
-    udpDatagramMaxSize: 8192
+    udpDatagramMaxSize: 8192,
+    maxFailedRPCs: 5
   }
   
 }; 
